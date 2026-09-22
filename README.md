@@ -2,7 +2,7 @@
 <html lang="sq">
 <head>
   <meta charset="UTF-8" />
-  <title>POS Market – Final Fixed + Complete</title>
+  <title>POS Market – Secure Final</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <style>
@@ -25,28 +25,13 @@
     }
 
     *{box-sizing:border-box}
-    html,body{
-      margin:0;
-      padding:0;
-      font-family:Segoe UI,Roboto,Arial,sans-serif;
-      background:var(--bg);
-      color:var(--text);
-    }
+    html,body{margin:0;padding:0;font-family:Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
     body{min-height:100vh}
 
     header{
       background:linear-gradient(135deg, var(--nav), #1f2937);
-      color:white;
-      padding:14px 18px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-      box-shadow:0 8px 18px rgba(17,24,39,.12);
-      position:sticky;
-      top:0;
-      z-index:30;
+      color:white;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+      box-shadow:0 8px 18px rgba(17,24,39,.12);position:sticky;top:0;z-index:30;
     }
     header h2{margin:0;font-size:1.15rem}
     nav{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -78,8 +63,7 @@
       border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.12);
     }
     button{
-      background:linear-gradient(135deg, var(--primary), var(--primary-2));
-      color:#fff;border:none;font-weight:700;cursor:pointer;
+      background:linear-gradient(135deg, var(--primary), var(--primary-2));color:#fff;border:none;font-weight:700;cursor:pointer;
       transition:.18s ease;box-shadow:0 8px 18px rgba(37,99,235,.2);
     }
     button:hover{transform:translateY(-1px)}
@@ -134,6 +118,9 @@
       background:linear-gradient(135deg,#f8fafc,#f1f5f9);
       border:1px solid #dbe3ef;border-radius:12px;padding:12px;margin-top:12px;
     }
+    .receipt{
+      font-family:monospace;white-space:pre-wrap;padding:20px;line-height:1.5;
+    }
     @media (max-width:700px){
       .row{flex-direction:column}
       nav{width:100%}
@@ -148,7 +135,7 @@
 
 <header>
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <h2>🛒 POS Market Final</h2>
+    <h2>🛒 POS Market Secure Final</h2>
     <div id="alertBell" class="alert-bell" title="Alerts" onclick="openAlertsModal()">
       ALARME <span id="alertCount" class="badge">0</span>
     </div>
@@ -258,14 +245,12 @@
     <div class="loyalty-box">
       <b>Programi Loyal</b>
       <div id="loyaltyInfo" class="small">Vendos emrin ose telefonin e klientit për të parë pikët.</div>
-
       <div class="loyalty-balance">
         <label style="display:block">
           <input id="useLoyaltyPoints" type="checkbox" onchange="recalc()">
           Përdor pikët e klientit
         </label>
       </div>
-
       <div id="loyaltyDiscount" class="small" style="margin-top:8px"></div>
     </div>
 
@@ -320,6 +305,7 @@
 <section id="clients">
   <div class="card">
     <h3>Klientët Loyal</h3>
+
     <div class="row" style="margin-bottom:10px">
       <input id="clientSearch" class="col" placeholder="Kërko sipas emri ose telefoni">
       <button onclick="renderLoyaltyTable()">Kërko</button>
@@ -408,33 +394,26 @@
 
 <script>
 /* ========= SECURE HASH + USERS ========= */
+async function sha256(value){
+  const utf8 = new TextEncoder().encode(value);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', utf8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
 function hashTextSync(value){
   const encoder = new TextEncoder();
   const data = encoder.encode(String(value));
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    hash = ((hash << 5) - hash + data[i]) >>> 0;
+  const hex = [];
+  for(let i=0;i<data.length;i++){
+    hex.push(data[i].toString(16).padStart(2,'0'));
   }
-  let hex = hash.toString(16);
-  while (hex.length < 8) hex = '0' + hex;
-  return hex;
-}
-
-async function sha256(value){
-  const str = String(value);
-  if (window.crypto && crypto.subtle && window.isSecureContext) {
-    try{
-      const utf8 = new TextEncoder().encode(str);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', utf8);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
-    }catch(e){}
-  }
-  return hashTextSync(str);
+  return hex.join('');
 }
 
 async function getStoredUsers(){
   const raw = localStorage.getItem('posUsers');
+
   if(!raw){
     const defaults = [
       { u:'admin', p: await sha256('admin'), r:'admin' },
@@ -443,6 +422,7 @@ async function getStoredUsers(){
     localStorage.setItem('posUsers', JSON.stringify(defaults));
     return defaults;
   }
+
   try{
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -454,7 +434,7 @@ async function getStoredUsers(){
 async function verifyLogin(username, password){
   const users = await getStoredUsers();
   const hashed = await sha256(password);
-  return users.find(u => u.u === username && u.p === hashed) || null;
+  return users.find(u => u.u === username && u.p === hashed);
 }
 
 async function ensureDefaultUsers(){
@@ -476,16 +456,13 @@ function safeNumber(value, fallback = 0){
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 }
-function round2(value){
-  return Math.round((Number(value) || 0) * 100) / 100;
-}
 function escapeHtml(str){
   return String(str ?? '').replace(/[&<>"']/g, s => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[s]));
 }
 function formatMoney(num){
-  return round2(num).toFixed(2);
+  return Number(num || 0).toFixed(2);
 }
 function getLocalDateStr(iso){
   const d = new Date(iso);
@@ -500,6 +477,9 @@ function normalizeLoyaltyValue(value){
 function stableString(value){
   return String(value ?? '').trim();
 }
+function csvEscape(value){
+  return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
 
 /* ========= STATE ========= */
 let role = 'guest';
@@ -510,10 +490,7 @@ let daily = safeNumber(localStorage.getItem('daily'), 0);
 let eurInRegister = safeNumber(localStorage.getItem('eurInRegister'), 0);
 
 let reorderConfig = safeParse(localStorage.getItem('reorderCfg'), {
-  leadDays:3,
-  reviewPeriodDays:7,
-  safetyStockFactor:1.5,
-  minOrderQty:1
+  leadDays:3, reviewPeriodDays:7, safetyStockFactor:1.5, minOrderQty:1
 });
 
 let exchangeRate = safeNumber(localStorage.getItem('exchangeRate'), 100.00);
@@ -647,6 +624,21 @@ function renderStats(){
 
 /* ========= PRODUCTS ========= */
 function storeProducts(){
+  const seen = new Set();
+  let duplicateFound = false;
+
+  products.forEach(function(product){
+    const barcode = String(product.b || '').trim();
+    if(!barcode) return;
+    if(seen.has(barcode)) duplicateFound = true;
+    seen.add(barcode);
+  });
+
+  if(duplicateFound){
+    alert('Ka barkodë të përsëritur në inventar. Çdo produkt duhet të ketë barkod unik.');
+    return;
+  }
+
   normalizeProducts();
   renderProducts();
   renderStats();
@@ -839,7 +831,7 @@ function calculateLoyaltyDiscount(totalBeforeDiscount){
   const maximumDiscount = customer.points * ALL_PER_POINT;
   const discountALL = Math.min(maximumDiscount, totalBeforeDiscount);
   const pointsUsed = Math.ceil(discountALL / ALL_PER_POINT);
-  return { discountALL: round2(discountALL), pointsUsed };
+  return { discountALL: Math.round(discountALL * 100) / 100, pointsUsed };
 }
 
 function refreshLoyaltyUI(){
@@ -914,30 +906,22 @@ function renderLoyaltyTable(){
   `;
 
   rows.forEach(c => {
-    const tr = document.createElement('tr');
-    const cells = [
-      ['td', c.name || '--'],
-      ['td', c.phone || '--'],
-      ['td', String(Number(c.points || 0))],
-      ['td', `${formatMoney(Number(c.points || 0) * ALL_PER_POINT)} ALL`],
-      ['td', `${formatMoney(Number(c.totalSpentALL || 0))} ALL`],
-      ['td', String(Number(c.transactions || 0))]
-    ];
+    const safeName = String(c.name || '').replace(/'/g, "\\'");
+    const safePhone = String(c.phone || '').replace(/'/g, "\\'");
 
-    cells.forEach(([tag, value]) => {
-      const td = document.createElement(tag);
-      td.textContent = value;
-      tr.appendChild(td);
-    });
-
-    const act = document.createElement('td');
-    const btn = document.createElement('button');
-    btn.textContent = 'Zgjidh';
-    btn.addEventListener('click', () => applyCustomerToSale(c.name || '', c.phone || ''));
-    act.appendChild(btn);
-    tr.appendChild(act);
-
-    loyalTableEl.appendChild(tr);
+    loyalTableEl.innerHTML += `
+      <tr>
+        <td>${escapeHtml(c.name || '--')}</td>
+        <td>${escapeHtml(c.phone || '--')}</td>
+        <td>${Number(c.points || 0)}</td>
+        <td>${formatMoney((Number(c.points || 0) * ALL_PER_POINT))} ALL</td>
+        <td>${formatMoney(Number(c.totalSpentALL || 0))} ALL</td>
+        <td>${Number(c.transactions || 0)}</td>
+        <td>
+          <button onclick="applyCustomerToSale('${safeName}','${safePhone}')">Zgjidh</button>
+        </td>
+      </tr>
+    `;
   });
 
   if(!rows.length){
@@ -967,7 +951,7 @@ function exportLoyaltyData(){
   const csv = [
     ['name','phone','points','totalSpentALL','transactions'],
     ...rows.map(c => [c.name || '', c.phone || '', Number(c.points || 0), Number(c.totalSpentALL || 0), Number(c.transactions || 0)])
-  ].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  ].map(r => r.map(v => csvEscape(v)).join(',')).join('\n');
 
   const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -1045,27 +1029,6 @@ function restoreData(){
 }
 
 /* ========= SALES ========= */
-function getCurrentSaleTotals(){
-  let subtotalALL = 0;
-  sales.forEach(x => subtotalALL += Number(x.q || 0) * Number(x.p || 0));
-
-  const surchargePct = Math.max(0, safeNumber(document.getElementById('surcharge').value, 0));
-  const surchargeAmount = round2(subtotalALL * (surchargePct / 100));
-  const totalBeforeDiscount = round2(subtotalALL + surchargeAmount);
-
-  const loyalty = calculateLoyaltyDiscount(totalBeforeDiscount);
-  const totalAll = round2(Math.max(0, totalBeforeDiscount - loyalty.discountALL));
-
-  return {
-    subtotalALL: round2(subtotalALL),
-    surchargePct,
-    surchargeAmount,
-    totalBeforeDiscount,
-    loyalty,
-    totalAll
-  };
-}
-
 function addToSale(p){
   if(!p) return;
   if(Number(p.s || 0) < 1) return alert('Stoku = 0');
@@ -1136,20 +1099,27 @@ function changeQty(i, delta){
 }
 
 function recalc(){
-  const totals = getCurrentSaleTotals();
-  const totalAll = totals.totalAll;
+  let subtotalALL = 0;
+  sales.forEach(x => subtotalALL += x.q * x.p);
 
+  const surchargePct = Math.max(0, safeNumber(document.getElementById('surcharge').value, 0));
+  const surchargeAmount = subtotalALL * (surchargePct / 100);
+  const totalBeforeDiscount = Math.round((subtotalALL + surchargeAmount) * 100) / 100;
+
+  const loyalty = calculateLoyaltyDiscount(totalBeforeDiscount);
+
+  const totalAll = Math.max(0, Math.round((totalBeforeDiscount - loyalty.discountALL) * 100) / 100);
   totEl.textContent = totalAll.toFixed(2);
 
-  if(totals.loyalty.discountALL > 0){
-    loyaltyDiscountEl.innerHTML = `<span class="loyalty-positive">Zbritje nga pikët: -${formatMoney(totals.loyalty.discountALL)} ALL</span>`;
+  if(loyalty.discountALL > 0){
+    loyaltyDiscountEl.innerHTML = `<span class="loyalty-positive">Zbritje nga pikët: -${formatMoney(loyalty.discountALL)} ALL</span>`;
   } else {
     loyaltyDiscountEl.textContent = useLoyaltyPointsEl.checked ? 'Nuk ka pikë të mjaftueshme për këtë total.' : '';
   }
 
   const saleCurrency = document.getElementById('saleCurrency').value;
   if(saleCurrency === 'EUR'){
-    const totalEur = round2(totalAll / exchangeRate);
+    const totalEur = Math.round((totalAll / exchangeRate) * 100) / 100;
     totInEurEl.innerHTML = `Total (EUR): <b>${totalEur.toFixed(2)}</b> EUR (kursi: 1 EUR = ${exchangeRate} ALL)`;
   } else {
     totInEurEl.innerHTML = '';
@@ -1158,14 +1128,10 @@ function recalc(){
   const paymentMethod = document.getElementById('paymentMethod').value;
   const paidRaw = safeNumber(paidEl.value, 0);
   let paidAllEquivalent = 0;
+  if(paymentMethod === 'cash_eur') paidAllEquivalent = Math.round((paidRaw * exchangeRate) * 100) / 100;
+  else paidAllEquivalent = paidRaw;
 
-  if(paymentMethod === 'cash_eur'){
-    paidAllEquivalent = round2(paidRaw * exchangeRate);
-  } else {
-    paidAllEquivalent = paidRaw;
-  }
-
-  const diff = round2(paidAllEquivalent - totalAll);
+  const diff = Math.round((paidAllEquivalent - totalAll) * 100) / 100;
   if(diff < 0){
     changeEl.textContent = `Mungojnë ${Math.abs(diff).toFixed(2)} ALL`;
     changeEl.style.color = 'red';
@@ -1194,65 +1160,114 @@ document.addEventListener('keydown', e => {
 function openCam(target, mode){
   scanTarget = target;
   camMode = mode;
-  camEl.style.display = 'block';
-  stopCam();
 
   if(!window.Quagga){
-    alert('Quagga nuk u gjet');
-    camEl.style.display = 'none';
+    alert('Quagga nuk u gjet.');
     return;
   }
 
+  stopCam(false);
+  camEl.style.display = 'block';
+  scannerEl.innerHTML = '';
+
   Quagga.init({
-    inputStream:{ type:'LiveStream', target: scannerEl, constraints:{ facingMode:{ ideal:mode }, width:{ ideal:640 }, height:{ ideal:480 } } },
-    locator:{ patchSize:'medium', halfSample:true },
-    decoder:{ readers:['ean_reader','ean_8_reader','code_128_reader','upc_reader'] },
+    inputStream:{
+      type:'LiveStream',
+      target: scannerEl,
+      constraints:{
+        facingMode:{ ideal: mode },
+        width:{ ideal:640 },
+        height:{ ideal:480 }
+      }
+    },
+    locator:{
+      patchSize:'medium',
+      halfSample:true
+    },
+    decoder:{
+      readers:[
+        'ean_reader',
+        'ean_8_reader',
+        'code_128_reader',
+        'upc_reader'
+      ]
+    },
     locate:true
-  }, err=>{
+  }, err => {
     if(err){
+      console.error('Camera error:', err);
       alert('Kamera nuk u hap: ' + (err.message || err));
-      camEl.style.display = 'none';
+      stopCam();
       return;
     }
 
-    try{ Quagga.start(); quaggaRunning = true; }catch(e){
+    try{
+      Quagga.start();
+      quaggaRunning = true;
+    }catch(e){
       alert('Gabim duke nisur kamerën: ' + (e.message || e));
-      camEl.style.display = 'none';
+      stopCam();
       return;
     }
 
-    quaggaHandler = function(d){
+    quaggaHandler = function(result){
       if(quaggaDebounce) return;
-      quaggaDebounce = true; setTimeout(()=>quaggaDebounce = false, 600);
 
-      const code = d && d.codeResult && (d.codeResult.code || d.codeResult.codeResult);
+      const code = result && result.codeResult && result.codeResult.code;
       if(!code) return;
 
+      quaggaDebounce = true;
+      setTimeout(() => { quaggaDebounce = false; }, 800);
+
+      const cleanCode = String(code).trim();
+
       if(scanTarget === 'stock'){
-        document.getElementById('pb').value = code;
+        document.getElementById('pb').value = cleanCode;
       } else if(scanTarget === 'sale'){
-        const p = products.find(x => String(x.b).trim() === String(code).trim());
+        const p = products.find(x => String(x.b).trim() === cleanCode);
         if(p) addToSale(p);
-        else alert('Barkodi nuk u gjet: ' + code);
+        else alert('Barkodi nuk u gjet: ' + cleanCode);
       }
 
-      setTimeout(stopCam, 300);
+      setTimeout(() => stopCam(), 300);
     };
 
-    try{ Quagga.onDetected(quaggaHandler); }catch(e){ try{ Quagga.on('detected', quaggaHandler); }catch(e){} }
+    try{
+      Quagga.onDetected(quaggaHandler);
+    }catch(e){
+      try{
+        Quagga.on('detected', quaggaHandler);
+      }catch(innerError){
+        console.error(innerError);
+      }
+    }
   });
 }
 
-function stopCam(){
-  camEl.style.display = 'none';
+function stopCam(hideModal = true){
+  if(hideModal && camEl){
+    camEl.style.display = 'none';
+  }
+
   try{
     if(quaggaHandler && window.Quagga){
-      try{ Quagga.offDetected(quaggaHandler); }catch(e){ try{ Quagga.off('detected', quaggaHandler); }catch(e){} }
+      try{ Quagga.offDetected(quaggaHandler); }catch(e){ try{ Quagga.off('detected', quaggaHandler); }catch(innerError){} }
     }
   }catch(e){}
-  try{ if(window.Quagga && quaggaRunning) Quagga.stop(); }catch(e){}
+
+  try{
+    if(window.Quagga && quaggaRunning){
+      Quagga.stop();
+    }
+  }catch(e){}
+
   quaggaHandler = null;
   quaggaRunning = false;
+  quaggaDebounce = false;
+
+  if(scannerEl){
+    scannerEl.innerHTML = '';
+  }
 }
 
 /* ========= PRINT RECEIPT ========= */
@@ -1280,39 +1295,70 @@ Status: ${record.status}
 
 function printReceipt(record){
   const printWindow = window.open('', '_blank', 'width=400,height=700');
-  if(!printWindow) return;
 
+  if(!printWindow){
+    alert('Printimi u bllokua nga browser-i. Lejo popup-et dhe provo përsëri.');
+    return false;
+  }
+
+  const receiptText = escapeHtml(buildReceiptText(record));
+
+  printWindow.document.open();
   printWindow.document.write(`
-    <html>
-      <head>
-        <title>Receipt</title>
-        <style>
-          body{font-family:monospace;padding:20px;font-size:12px;line-height:1.5;color:#111}
-          .box{white-space:pre-wrap}
-        </style>
-      </head>
-      <body>
-        <div class="box">${escapeHtml(buildReceiptText(record))}</div>
-        <script>window.print(); setTimeout(()=>window.close(), 500);</script>
-      </body>
+    <!DOCTYPE html>
+    <html lang="sq">
+    <head>
+      <meta charset="UTF-8">
+      <title>Receipt</title>
+      <style>
+        body{
+          font-family:monospace;
+          padding:20px;
+          font-size:12px;
+          line-height:1.5;
+          color:#111;
+        }
+        .box{white-space:pre-wrap}
+      </style>
+    </head>
+    <body>
+      <div class="box">${receiptText}</div>
+      <script>
+        window.onload = function(){
+          window.print();
+          setTimeout(function(){
+            window.close();
+          }, 700);
+        };
+      <\/script>
+    </body>
     </html>
   `);
+
+  printWindow.document.close();
+  return true;
 }
 
 /* ========= PAYMENTS + HISTORY ========= */
 function pay(){
-  if(sales.length === 0){
-    alert('Shporta është bosh');
+  if(sales.length === 0){ alert('Shporta është bosh'); return; }
+
+  const paidValue = paidEl.value;
+  if(paidValue === '' || paidValue === null){
+    alert('Vendos shumën e paguar nga klienti.');
+    paidEl.focus();
     return;
   }
 
-  const totalAll = round2(Number(totEl.textContent) || 0);
-  const cashInput = safeNumber(paidEl.value, 0);
-
-  if(cashInput <= 0){
-    alert('Shuma e paguar duhet të jetë më e madhe se 0');
+  const paidAmount = Number(paidValue);
+  if(!Number.isFinite(paidAmount) || paidAmount < 0){
+    alert('Shuma e paguar duhet të jetë zero ose më e madhe.');
+    paidEl.focus();
     return;
   }
+
+  const totalAll = safeNumber(totEl.textContent, 0);
+  const cashInput = paidAmount;
 
   const paymentMethod = document.getElementById('paymentMethod').value;
   let cashGivenRaw = cashInput;
@@ -1321,19 +1367,19 @@ function pay(){
 
   if(paymentMethod === 'cash_eur'){
     paymentCurrency = 'EUR';
-    cashGivenALL = round2(cashGivenRaw * exchangeRate);
+    cashGivenALL = Math.round((cashGivenRaw * exchangeRate) * 100) / 100;
   } else {
     paymentCurrency = 'ALL';
-    cashGivenALL = round2(cashGivenRaw);
+    cashGivenALL = cashGivenRaw;
   }
 
-  const subtotalALL = sales.reduce((sum, item) => sum + Number(item.q || 0) * Number(item.p || 0), 0);
+  const subtotalALL = sales.reduce((sum, item) => sum + item.q * item.p, 0);
   const surchargePct = Math.max(0, safeNumber(document.getElementById('surcharge').value, 0));
-  const surchargeAmount = round2(subtotalALL * (surchargePct / 100));
-  const totalBeforeDiscount = round2(subtotalALL + surchargeAmount);
+  const surchargeAmount = subtotalALL * (surchargePct / 100);
+  const totalBeforeDiscount = Math.round((subtotalALL + surchargeAmount) * 100) / 100;
 
   const loyalty = calculateLoyaltyDiscount(totalBeforeDiscount);
-  const loyaltyPointsUsed = loyalty.pointsUsed || 0;
+  const loyaltyPointsUsed = loyalty.pointsUsed;
 
   const netCollectedALL = Math.min(cashGivenALL, totalAll);
   const changeALL = Math.max(0, cashGivenALL - totalAll);
@@ -1342,7 +1388,7 @@ function pay(){
 
   for(const item of sales){
     const prod = products.find(p => p.b === item.b);
-    if(prod) prod.s = Math.max(0, Number(prod.s || 0) - Number(item.q || 0));
+    if(prod) prod.s = Math.max(0, prod.s - item.q);
   }
   storeProducts();
 
@@ -1353,37 +1399,36 @@ function pay(){
     client: (clientEl.value || '').trim() || null,
     clientPhone: (clientPhoneEl.value || '').trim() || null,
     items: JSON.parse(JSON.stringify(sales)),
-    subtotalAll: round2(subtotalALL),
-    surchargePct: round2(surchargePct),
-    loyaltyDiscountALL: round2(loyalty.discountALL || 0),
+    subtotalAll: Math.round(subtotalALL * 100) / 100,
+    surchargePct,
+    loyaltyDiscountALL: loyalty.discountALL,
     loyaltyPointsUsed,
-    totalBeforeLoyaltyDiscount: round2(totalBeforeDiscount),
+    totalBeforeLoyaltyDiscount: totalBeforeDiscount,
     totalAll,
     paymentMethod,
     paymentCurrency,
-    cashGivenRaw: round2(cashGivenRaw),
-    cashGivenALL: round2(cashGivenALL),
-    changeALL: round2(changeALL),
-    amountPaid: round2(netCollectedALL),
-    due: round2(due),
+    cashGivenRaw,
+    cashGivenALL,
+    changeALL,
+    amountPaid: netCollectedALL,
+    due,
     status,
     loyaltyPointsEarned: 0,
     loyaltyBalanceAfter: 0
   };
 
   updateLoyaltyAfterPayment(record);
-
   salesHistory.unshift(record);
   localStorage.setItem('salesHistory', JSON.stringify(salesHistory));
   renderStats();
 
-  daily += record.amountPaid;
+  daily += netCollectedALL;
   localStorage.setItem('daily', String(daily));
 
   if(paymentCurrency === 'EUR'){
-    const netEur = round2(Math.min(cashGivenALL, totalAll) / exchangeRate);
+    const netEur = Math.round((Math.min(cashGivenALL, totalAll) / exchangeRate) * 100) / 100;
     eurInRegister += netEur;
-    localStorage.setItem('eurInRegister', String(round2(eurInRegister)));
+    localStorage.setItem('eurInRegister', String(eurInRegister));
   }
 
   cancel();
@@ -1403,7 +1448,7 @@ function pay(){
   html += `<div>Kusur (ALL): ${record.changeALL}</div>`;
   html += `<div class="small">Shuma e shtuar në arkë (neto, ALL): ${record.amountPaid} ALL</div>`;
   if(record.paymentCurrency === 'EUR'){
-    html += `<div class="small">Euro të mbledhura (neto): ${round2(record.amountPaid / exchangeRate)} EUR</div>`;
+    html += `<div class="small">Euro të mbledhura (neto): ${Math.round((record.amountPaid / exchangeRate) * 100) / 100} EUR</div>`;
   }
 
   txnTitleEl.textContent = status === 'paid' ? 'Shitje e plotë' : 'Shitje me borxh';
@@ -1414,7 +1459,6 @@ function cancel(){
   sales = [];
   saleTableEl.innerHTML = '';
   totEl.textContent = '0';
-  totInEurEl.innerHTML = '';
   paidEl.value = '';
   changeEl.textContent = '0';
   changeEl.style.color = '';
@@ -1450,8 +1494,8 @@ function renderHistory(){
         <td>${formatMoney(rec.due)}</td>
         <td>${escapeHtml(rec.status)}</td>
         <td>
-          <button onclick='viewSale(${JSON.stringify(rec.id)})'>Shiko</button>
-          <button class="danger" onclick='deleteSale(${JSON.stringify(rec.id)})'>🗑️</button>
+          <button onclick='viewSale("${rec.id}")'>Shiko</button>
+          <button class="danger" onclick='deleteSale("${rec.id}")'>🗑️</button>
         </td>
       </tr>
     `;
@@ -1541,10 +1585,10 @@ function exportCSV(){
   salesHistory.slice().reverse().forEach(r=>{
     const itemsText = r.items.map(i => `${i.n} x${i.q}=${i.q*i.p}`).join(' | ');
     const row = [
-      `"${r.id}"`,
-      `"${r.timestamp}"`,
-      `"${(r.client || '')}"`,
-      `"${(r.clientPhone || '')}"`,
+      csvEscape(r.id),
+      csvEscape(r.timestamp),
+      csvEscape(r.client || ''),
+      csvEscape(r.clientPhone || ''),
       r.subtotalAll,
       r.surchargePct,
       r.loyaltyDiscountALL || 0,
@@ -1552,12 +1596,12 @@ function exportCSV(){
       r.totalAll,
       r.amountPaid,
       r.cashGivenRaw,
-      `"${r.paymentCurrency}"`,
-      `"${r.paymentMethod}"`,
+      csvEscape(r.paymentCurrency),
+      csvEscape(r.paymentMethod),
       r.changeALL,
       r.due,
-      `"${r.status}"`,
-      `"${itemsText}"`
+      csvEscape(r.status),
+      csvEscape(itemsText)
     ];
     rows.push(row.join(','));
   });
@@ -1750,7 +1794,8 @@ window.addEventListener('storage', e=>{
   if(e.key === 'loyaltyCustomers'){ loyaltyCustomers = safeParse(e.newValue, {}); renderLoyaltyTable(); refreshLoyaltyUI(); }
 });
 
-document.addEventListener('DOMContentLoaded', async () => {
+/* ========= INIT ========= */
+(async function(){
   await ensureDefaultUsers();
   normalizeProducts();
   renderProducts();
@@ -1761,7 +1806,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderStats();
   checkAlerts();
   refreshLoyaltyUI();
-});
+})();
 
 window.checkAlerts = checkAlerts;
 window.buildReorderReportRaw = buildReorderReportRaw;
