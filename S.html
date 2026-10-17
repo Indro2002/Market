@@ -162,7 +162,7 @@
     }
     .modal-content {
       background: rgba(17, 27, 45, 0.96); border: 1px solid var(--line);
-      border-radius: var(--radius); padding: 24px; width: min(520px, 92vw); box-shadow: var(--shadow);
+      border-radius: var(--radius); padding: 24px; width: min(820px, 96vw); box-shadow: var(--shadow);
     }
 
     .status-pill { padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 800; display: inline-block; }
@@ -396,6 +396,10 @@
                 <input type="text" id="barcode-input" class="pos-search" style="margin-bottom:0;" placeholder="Skano me barkod ose shkruaj emrin... (Shtyp F2)" autofocus />
                 <button class="btn btn-purple" style="white-space:nowrap;" onclick="HardwareScale.readScaleWeight()">⚖ Read Weight</button>
               </div>
+              <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                <button class="btn btn-primary" onclick="POS.toggleShowAll()">Shfaq të Gjitha / Limit</button>
+                <span style="color:var(--text-soft); font-size:0.9rem;">(Produkte me peshë shfaqen së pari)</span>
+              </div>
               <div class="product-grid" id="product-grid"></div>
             </div>
 
@@ -534,14 +538,7 @@
                   <label>Çmimi i Shitjes (ALL)</label>
                   <input type="number" id="p-price" min="0" step="0.1" required placeholder="120" />
                 </div>
-                <div class="field">
-                  <label>Sasia në Stok</label>
-                  <input type="number" id="p-stock" min="0" step="0.01" required placeholder="50" />
-                </div>
-                <div class="field">
-                  <label>Data e Skadencës</label>
-                  <input type="date" id="p-expiry" />
-                </div>
+                <!-- NOTE: Sasia u hoq nga forma sipas kërkesës. Stock mbetet brenda objektit por not editable here. -->
               </div>
               <div style="display:flex; gap:10px; margin-top:14px;">
                 <button type="submit" id="p-save-btn" class="btn btn-primary">Ruaj Produktin</button>
@@ -574,6 +571,41 @@
             </div>
           </div>
         </section>
+
+        <!-- MODAL: IMPORT VALIDATION / PREVIEW -->
+        <div id="import-validate-modal" class="modal-overlay hidden">
+          <div class="modal-content">
+            <h3 style="margin-bottom:12px; color:var(--primary);">🔍 Parapamje e Importit - Kontrollo dhe Konfirmo</h3>
+            <p style="color:var(--text-soft); margin-bottom:12px;">
+              Para se të importohen artikujt në sistem, kontrolloni gabimet dhe zgjidhni t'i shtoni/ përditësoni.
+            </p>
+
+            <div style="max-height: 50vh; overflow:auto; margin-bottom:12px;">
+              <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                  <tr style="text-align:left; border-bottom:1px solid var(--line);">
+                    <th style="padding:8px;">Status</th>
+                    <th style="padding:8px;">Barkod</th>
+                    <th style="padding:8px;">Emri</th>
+                    <th style="padding:8px;">Njësia</th>
+                    <th style="padding:8px;">Blerje</th>
+                    <th style="padding:8px;">Shitje</th>
+                    <th style="padding:8px;">Stok</th>
+                  </tr>
+                </thead>
+                <tbody id="import-validate-body"></tbody>
+              </table>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <div id="import-validate-summary" style="color:var(--text-soft)"></div>
+              <div>
+                <button class="btn btn-danger" onclick="Stock.closeImportValidateModal()">Anulo</button>
+                <button class="btn btn-primary" id="import-validate-confirm-btn">Konfirmo Importin</button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- MODULI I HUMBJEVE DHE KONSUMIT TË STAFIT -->
         <section id="waste-view" class="view">
@@ -875,6 +907,19 @@
                   <option value="large" selected>E Zmadhuar (E Lexueshme)</option>
                 </select>
               </div>
+              <div class="field">
+                <label>Lloji i Shkrimit (Font Family)</label>
+                <select id="setting-font-family">
+                  <option value="Arial">Arial</option>
+                  <option value="Roboto">Roboto</option>
+                  <option value="Helvetica">Helvetica</option>
+                  <option value="Courier New">Courier New</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Madhësia e Shkrimit për Print (px)</label>
+                <input type="number" id="setting-print-font-size" value="13" min="8" max="24" />
+              </div>
             </div>
             <button class="btn btn-primary" onclick="ThermalPrinter.connectPrinter()">🔗 Lidh Printerin Bluetooth</button>
             <div id="printer-status" style="margin-top:10px; font-weight:bold; font-size:0.85rem; color:var(--text-soft);">Statusi: I palidhur</div>
@@ -916,6 +961,9 @@
                 <label style="font-size:0.8rem; font-weight:bold; color:var(--text-soft);">Rikthe Bazin e Të Dhënave nga Skedari:</label>
                 <input type="file" id="import-json-file" accept=".json" style="font-size:0.8rem; padding:6px; background:rgba(15,23,42,0.6); border-radius:8px;" />
                 <button class="btn btn-warning" onclick="Backup.importJSON()">📤 Importo & Rikthe Të Dhënat</button>
+                <div style="font-size:0.82rem; color:var(--text-soft); margin-top:6px;">
+                  Opsional: vendosni një passphrase gjatë eksportit për të enkriptuar skedarin; gjatë importit systemi do t'ju kërkojë passphrase-n nëse skedari është i enkriptuar.
+                </div>
               </div>
             </div>
           </div>
@@ -992,17 +1040,17 @@
 
   <!-- MODAL: IMPORTI I ARTIKUJVE (PASTE / EXCEL) -->
   <div id="import-modal" class="modal-overlay hidden">
-    <div class="modal-content" style="width: min(500px, 92vw);">
+    <div class="modal-content" style="width: min(700px, 96vw);">
       <h3 style="margin-bottom:12px; color:var(--primary);">📥 Importo Artikuj nga Programe të Tjera (Paste / Të Dhëna)</h3>
       <p style="color:var(--text-soft); font-size:0.88rem; margin-bottom:14px;">
         Kopjoni të dhënat nga Excel ose një program tjetër dhe ngjitini (Paste) këtu (Format: Barkod | Emër | Njësi | Çm.Blerje | Çm.Shitje | Stok | Skadencë).
       </p>
       <div class="field" style="margin-bottom:14px;">
-        <textarea id="import-paste-area" rows="6" placeholder="1001\tMollë\tkg\t70\t120\t50\t2027-01-01"></textarea>
+        <textarea id="import-paste-area" rows="8" placeholder="1001\tMollë\tkg\t70\t120\t50\t2027-01-01"></textarea>
       </div>
       <div style="display:flex; justify-content:flex-end; gap:10px;">
         <button class="btn btn-danger" onclick="Stock.closeImportModal()">Anulo</button>
-        <button class="btn btn-primary" onclick="Stock.processImportPaste()">Importo Të Dhënat</button>
+        <button class="btn btn-primary" onclick="Stock.processImportPaste()">Parapamje & Importo</button>
       </div>
     </div>
   </div>
@@ -1047,25 +1095,117 @@
   <div id="toast-container"></div>
 
   <script>
-    // --- 1. MODULI OFFLINE SYNC ENGINE ---
-    const OfflineSync = (() => {
-      const QUEUE_KEY = 'pos_offline_sales_queue_v3';
+    /* ======== Utilities: hashing, base64, encryption (Web Crypto) ======== */
+    async function sha256Hex(str) {
+      const enc = new TextEncoder().encode(str);
+      const hashBuf = await crypto.subtle.digest('SHA-256', enc);
+      const hashArr = Array.from(new Uint8Array(hashBuf));
+      return hashArr.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
 
-      const saveOfflineSale = (sale) => {
-        const queue = getQueue();
-        queue.push(sale);
-        localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+    function toBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    }
+
+    function fromBase64(b64) {
+      const binary = atob(b64);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes.buffer;
+    }
+
+    async function deriveKeyFromPassphrase(passphrase, saltBase64) {
+      const salt = saltBase64 ? new Uint8Array(fromBase64(saltBase64)) : crypto.getRandomValues(new Uint8Array(16));
+      const enc = new TextEncoder().encode(passphrase);
+      const baseKey = await crypto.subtle.importKey('raw', enc, {name:'PBKDF2'}, false, ['deriveKey']);
+      const key = await crypto.subtle.deriveKey({
+        name: 'PBKDF2',
+        salt,
+        iterations: 150000,
+        hash: 'SHA-256'
+      }, baseKey, { name: 'AES-GCM', length: 256 }, true, ['encrypt','decrypt']);
+      return { key, salt: toBase64(salt) };
+    }
+
+    async function encryptJSONWithPassphrase(jsonStr, passphrase) {
+      const { key, salt } = await deriveKeyFromPassphrase(passphrase);
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const encoded = new TextEncoder().encode(jsonStr);
+      const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+      return { ciphertext: toBase64(cipher), iv: toBase64(iv), salt };
+    }
+
+    async function decryptJSONWithPassphrase(ciphertextB64, ivB64, saltB64, passphrase) {
+      const { key } = await deriveKeyFromPassphrase(passphrase, saltB64);
+      const iv = new Uint8Array(fromBase64(ivB64));
+      const cipherBuf = fromBase64(ciphertextB64);
+      const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipherBuf);
+      return new TextDecoder().decode(plainBuf);
+    }
+
+    /* ======== Offline Sync with exponential retry ======== */
+    const OfflineSync = (() => {
+      const QUEUE_KEY = 'pos_offline_sales_queue_v4'; // bump version
+      const getQueue = () => {
+        try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; } catch(e){ return []; }
+      };
+      const saveQueue = (q) => localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+      const pushToQueue = (sale) => {
+        const q = getQueue();
+        q.push({ id: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2,8), attempts: 0, nextTryAt: 0, payload: sale });
+        saveQueue(q);
         updateSyncStatus();
       };
-
-      const getQueue = () => {
-        try {
-          return JSON.parse(localStorage.getItem(QUEUE_KEY)) || [];
-        } catch (e) { return []; }
+      const removeFromQueue = (id) => {
+        let q = getQueue();
+        q = q.filter(i => i.id !== id);
+        saveQueue(q);
+        updateSyncStatus();
+      };
+      const scheduleRetry = (item) => {
+        item.attempts = (item.attempts || 0) + 1;
+        const backoffMs = Math.pow(2, item.attempts) * 1000; // 2^attempts * 1000ms
+        item.nextTryAt = Date.now() + backoffMs;
       };
 
-      const clearQueue = () => {
-        localStorage.setItem(QUEUE_KEY, JSON.stringify([]));
+      const postToServer = async (payload) => {
+        // Replace with real endpoint. For demo we try POST to /sync and rely on server response.
+        // If no real endpoint, this will fail and schedule retries.
+        const res = await fetch('/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Network/Server error');
+        return res.json();
+      };
+
+      const syncData = async () => {
+        if (!navigator.onLine) return;
+        const q = getQueue();
+        if (q.length === 0) {
+          updateSyncStatus();
+          return;
+        }
+        for (let item of q.slice()) {
+          try {
+            if (Date.now() < (item.nextTryAt || 0)) continue;
+            // attempt
+            await postToServer(item.payload);
+            removeFromQueue(item.id);
+          } catch (err) {
+            // schedule retry
+            scheduleRetry(item);
+            // save updated attempts/nextTryAt
+            const all = getQueue();
+            const idx = all.findIndex(i => i.id === item.id);
+            if (idx >= 0) { all[idx] = item; saveQueue(all); }
+          }
+        }
         updateSyncStatus();
       };
 
@@ -1075,9 +1215,12 @@
         const queue = getQueue();
         if (navigator.onLine) {
           if (queue.length > 0) {
-            statusEl.innerHTML = `🟡 Online (Duke sinkronizuar ${queue.length} faturë...)`;
+            // find earliest nextTryAt
+            const pending = queue.length;
+            statusEl.innerHTML = `🟡 Online (${pending} faturë në radhë, duke u sinkronizuar...)`;
             statusEl.style.color = 'var(--warning)';
-            syncData();
+            // try sync in background
+            setTimeout(syncData, 400);
           } else {
             statusEl.innerHTML = `🟢 Online / Synced`;
             statusEl.style.color = 'var(--success)';
@@ -1088,17 +1231,10 @@
         }
       };
 
-      const syncData = () => {
-        const queue = getQueue();
-        if (queue.length === 0) return;
-        clearQueue();
-        App.showToast('Faturat e ruajtura offline u sinkronizuan me sukses!', 'success');
-      };
-
       window.addEventListener('online', updateSyncStatus);
       window.addEventListener('offline', updateSyncStatus);
 
-      return { saveOfflineSale, updateSyncStatus };
+      return { saveOfflineSale: pushToQueue, syncData, updateSyncStatus, getQueue };
     })();
 
     // --- 2. SISTEMI I AUDIO BEEP ---
@@ -1129,11 +1265,11 @@
 
       const connectPrinter = async () => {
         if (!('bluetooth' in navigator)) {
-          App.showToast('Web Bluetooth nuk mbështetet në këtë shfletues.', 'danger');
+          App.showToast('Web Bluetooth nuk duket i disponueshëm në këtë shfletues. Përdorni Chrome/Edge me HTTPS dhe aktivizoni Bluetooth.', 'danger');
           return;
         }
         try {
-          document.getElementById('printer-status').textContent = 'Statusi: Duke kërkuar pajisjen...';
+          document.getElementById('printer-status').textContent = 'Statusi: Duke kërkuar pajisjen... (lejoni aksesin për printerin termik)';
           bluetoothDevice = await navigator.bluetooth.requestDevice({
             acceptAllDevices: true,
             optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
@@ -1146,7 +1282,7 @@
           App.showToast('Printeri Bluetooth u lidh me sukses!', 'success');
         } catch (error) {
           document.getElementById('printer-status').textContent = 'Statusi: I palidhur';
-          App.showToast('Lidhja me printerin dështoi ose u anulua.', 'danger');
+          App.showToast('Lidhja me printerin dështoi ose u anulua. Kontrolloni lejet e Bluetooth dhe provoni përsëri.', 'danger');
         }
       };
 
@@ -1156,7 +1292,9 @@
         }
         try {
           const encoder = new TextEncoder();
-          await printerCharacteristic.writeValue(encoder.encode(rawText + '\n\n'));
+          const chunk = encoder.encode(rawText + '\n\n');
+          // write may need chunking depending on printer buffer; for demo single write
+          await printerCharacteristic.writeValue(chunk);
           App.showToast('U printua direkt në printerin termik Bluetooth!', 'success');
           return true;
         } catch(e) {
@@ -1336,7 +1474,7 @@
         auditLogs: [],
         expenses: [],
         waste: [],
-        settings: { eur_rate: 100, printer_type: 'thermal', font_size: 'large' },
+        settings: { eur_rate: 100, printer_type: 'thermal', font_size: 'large', font_family: 'Arial', print_font_px: 13 },
         dayState: { isOpen: false, floatALL: 0, floatEUR: 0, openTime: null },
         cart: [],
         supplyQuantities: {}
@@ -1365,7 +1503,7 @@
         state.auditLogs = savedLogs ? JSON.parse(savedLogs) : [];
 
         const savedSettings = localStorage.getItem(STORAGE_KEYS.settings);
-        state.settings = savedSettings ? JSON.parse(savedSettings) : { eur_rate: 100, printer_type: 'thermal', font_size: 'large' };
+        state.settings = savedSettings ? JSON.parse(savedSettings) : { eur_rate: 100, printer_type: 'thermal', font_size: 'large', font_family: 'Arial', print_font_px: 13 };
 
         const savedDayState = localStorage.getItem(STORAGE_KEYS.day_state);
         state.dayState = savedDayState ? JSON.parse(savedDayState) : { isOpen: false, floatALL: 0, floatEUR: 0, openTime: null };
@@ -1374,6 +1512,8 @@
         document.getElementById('eur-rate-label').textContent = state.settings.eur_rate;
         if(document.getElementById('setting-printer-type')) document.getElementById('setting-printer-type').value = state.settings.printer_type || 'thermal';
         if(document.getElementById('setting-font-size')) document.getElementById('setting-font-size').value = state.settings.font_size || 'large';
+        if(document.getElementById('setting-font-family')) document.getElementById('setting-font-family').value = state.settings.font_family || 'Arial';
+        if(document.getElementById('setting-print-font-size')) document.getElementById('setting-print-font-size').value = state.settings.print_font_px || 13;
 
         bindEvents();
         initGlobalBarcodeScanner();
@@ -1406,7 +1546,7 @@
         if (Notification.permission === 'default') {
           Notification.requestPermission();
         } else if (Notification.permission === 'granted') {
-          const criticalStock = state.products.filter(p => p.stock <= 3).length;
+          const criticalStock = state.products.filter(p => typeof p.stock === 'number' && p.stock <= 3).length;
           if (criticalStock > 0) {
             new Notification('Market Isufi - Kujdes Stok!', {
               body: `Keni ${criticalStock} produkte me stok kritik! Kontrolloni modulin e furnizimit.`,
@@ -1500,10 +1640,13 @@
           });
         });
 
+        // debounce search input for UI responsiveness (esp >10k items)
+        let searchTimeout = null;
         const barcodeInput = document.getElementById('barcode-input');
         if (barcodeInput) {
           barcodeInput.addEventListener('input', (e) => {
-            POS.search(e.target.value);
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => POS.search(e.target.value), 180);
           });
         }
 
@@ -1732,6 +1875,10 @@
 
     // --- POS MODULE ---
     const POS = (() => {
+      let lastSale = null;
+      let showAllProducts = false;
+      const MAX_DISPLAY = 300; // limit to keep UI snappy for large catalogs
+
       const checkDayStatus = () => {
         const banner = document.getElementById('pos-blocked-banner');
         const btnCheckout = document.getElementById('btn-checkout');
@@ -1751,11 +1898,24 @@
         }
       };
 
+      // RENDERS PRODUCTS using DocumentFragment and shows kg-items first
       const renderProducts = (list = App.state.products) => {
         const grid = document.getElementById('product-grid');
         if (!grid) return;
         grid.innerHTML = '';
-        list.forEach(p => {
+
+        // prioritize kg items
+        const kgItems = list.filter(p => p.unit === 'kg');
+        const otherItems = list.filter(p => p.unit !== 'kg');
+        let combined = kgItems.concat(otherItems);
+
+        if (!showAllProducts && combined.length > MAX_DISPLAY) {
+          combined = combined.slice(0, MAX_DISPLAY);
+          // append "show more" indicator later
+        }
+
+        const frag = document.createDocumentFragment();
+        combined.forEach(p => {
           let expiryAlertHtml = '';
           if (p.expiry) {
             const expDate = new Date(p.expiry);
@@ -1773,14 +1933,33 @@
           card.className = 'product-card';
           card.innerHTML = `
             <h4>${p.name}</h4>
-            <div class="price">${p.price.toFixed(2)} ALL</div>
+            <div class="price">${(p.price || 0).toFixed(2)} ALL</div>
             <span class="unit-badge">${p.unit === 'kg' ? 'Me Peshë (kg)' : 'Copë'}</span>
-            <div style="font-size:0.75rem; color:var(--text-soft); margin-top:4px;">Stoku: ${p.stock}</div>
+            <div style="font-size:0.75rem; color:var(--text-soft); margin-top:4px;">Stoku: ${typeof p.stock === 'number' ? p.stock : '-'}</div>
             ${expiryAlertHtml}
           `;
           card.onclick = () => addToCart(p);
-          grid.appendChild(card);
+          frag.appendChild(card);
         });
+
+        grid.appendChild(frag);
+
+        if (!showAllProducts && list.length > MAX_DISPLAY) {
+          const moreBtn = document.createElement('button');
+          moreBtn.className = 'btn btn-primary';
+          moreBtn.style.marginTop = '10px';
+          moreBtn.textContent = `Shfaq ${list.length - MAX_DISPLAY} të tjera`;
+          moreBtn.onclick = () => {
+            showAllProducts = true;
+            renderProducts(list);
+          };
+          grid.appendChild(moreBtn);
+        }
+      };
+
+      const toggleShowAll = () => {
+        showAllProducts = !showAllProducts;
+        POS.renderProducts();
       };
 
       const search = (queryStr) => {
@@ -1799,10 +1978,9 @@
         renderProducts(filtered);
       };
 
+      // Allow add to cart even if product.stock is undefined or 0.
       const addToCart = (product) => {
         if (!App.state.dayState.isOpen) return App.showToast('Ju lutemi bëni hapjen e ditës!', 'danger');
-        if (product.stock <= 0) return App.showToast(`Produkti "${product.name}" nuk ka stok!`, 'danger');
-
         SoundFX.success();
 
         let qty = 1;
@@ -1815,7 +1993,6 @@
 
         const item = App.state.cart.find(c => c.id === product.id);
         if (item) {
-          if (item.qty + qty > product.stock) return App.showToast(`Tejkalon stokun prej ${product.stock}`, 'danger');
           item.qty += qty;
         } else {
           App.state.cart.push({ ...product, qty });
@@ -1828,6 +2005,7 @@
         const tbody = document.getElementById('cart-items');
         if (!tbody) return;
         tbody.innerHTML = '';
+        const frag = document.createDocumentFragment();
         App.state.cart.forEach((item, index) => {
           const row = document.createElement('tr');
           const stepAttr = item.unit === 'kg' ? 'step="0.050"' : 'step="1"';
@@ -1840,8 +2018,9 @@
             <td>${lineTotal.toFixed(2)}</td>
             <td><button class="small-btn delete" onclick="POS.removeItem(${index})">X</button></td>
           `;
-          tbody.appendChild(row);
+          frag.appendChild(row);
         });
+        tbody.appendChild(frag);
         updateTotals();
       };
 
@@ -1851,9 +2030,6 @@
         if (!item) return;
         if (isNaN(qty) || qty <= 0) {
           removeItem(i);
-        } else if (qty > item.stock) {
-          App.showToast(`Sasia tejkalon stokun prej ${item.stock}`, 'danger');
-          item.qty = item.stock;
         } else {
           item.qty = qty;
         }
@@ -1951,9 +2127,10 @@
         const paymentCalc = calculateMixedPaymentChange(total, paidAll, paidEur, eurRate, targetCurrency);
         if (!paymentCalc.isSufficient) return App.showToast('Sasia e parave të dhëna nuk mjafton!', 'danger');
 
+        // decrement stock only for products that have numeric stock
         App.state.cart.forEach(cartItem => {
           const product = App.state.products.find(p => p.id === cartItem.id);
-          if (product) product.stock = Math.max(0, product.stock - cartItem.qty);
+          if (product && typeof product.stock === 'number') product.stock = Math.max(0, product.stock - cartItem.qty);
         });
         localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(App.state.products));
 
@@ -1989,7 +2166,7 @@
           OfflineSync.saveOfflineSale(sale);
         }
 
-        POS.lastSale = sale;
+        lastSale = sale;
         App.state.cart = [];
         document.getElementById('cart-discount').value = 0;
         document.getElementById('cart-paid-all').value = '';
@@ -2026,9 +2203,12 @@
         const discount = parseFloat(document.getElementById('cart-discount').value) || 0;
         const total = Math.max(0, subtotal - discount);
 
+        // only decrement products with numeric stock
         App.state.cart.forEach(cartItem => {
           const product = App.state.products.find(p => p.id === cartItem.id);
-          if (product) product.stock = Math.max(0, product.stock - cartItem.qty);
+          if (product && typeof product.stock === 'number') {
+            product.stock = Math.max(0, product.stock - cartItem.qty);
+          }
         });
         localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(App.state.products));
 
@@ -2072,7 +2252,7 @@
         App.state.debts.unshift(debtRecord);
         localStorage.setItem(STORAGE_KEYS.debts, JSON.stringify(App.state.debts));
 
-        POS.lastSale = sale;
+        lastSale = sale;
         App.state.cart = [];
         renderCart();
         renderProducts();
@@ -2083,8 +2263,11 @@
       };
 
       const printLastInvoice = async () => {
-        const sale = POS.lastSale || App.state.sales[0];
+        const sale = lastSale || App.state.sales[0];
         if (!sale) return App.showToast('Nuk ka faturë për printim!', 'danger');
+
+        const fontFamily = App.state.settings.font_family || 'Arial';
+        const fontPx = App.state.settings.print_font_px || 13;
 
         const rawText = `MARKET ISUFI\nFatura: ${sale.receipt}\nData: ${new Date(sale.date).toLocaleString('sq-AL')}\n--------------------\n` +
           sale.items.map(i => `${i.name} x ${i.qty} = ${(i.price * i.qty).toFixed(2)} ALL`).join('\n') +
@@ -2096,10 +2279,10 @@
         const win = window.open('', '_blank', 'width=380,height=600');
         const itemsRows = sale.items.map(i => `
           <tr>
-            <td style="font-size:13px; padding:5px 0;">${i.name}</td>
-            <td style="text-align:center; font-size:13px; padding:5px 0;">${i.qty} ${i.unit === 'kg' ? 'kg' : ''}</td>
-            <td style="text-align:right; font-size:13px; padding:5px 0;">${i.price.toFixed(2)}</td>
-            <td style="text-align:right; font-size:13px; padding:5px 0; font-weight:bold;">${(i.price * i.qty).toFixed(2)}</td>
+            <td style="font-size:${fontPx}px; padding:5px 0;">${escapeHtml(i.name)}</td>
+            <td style="text-align:center; font-size:${fontPx}px; padding:5px 0;">${i.qty} ${i.unit === 'kg' ? 'kg' : ''}</td>
+            <td style="text-align:right; font-size:${fontPx}px; padding:5px 0;">${i.price.toFixed(2)}</td>
+            <td style="text-align:right; font-size:${fontPx}px; padding:5px 0; font-weight:bold;">${(i.price * i.qty).toFixed(2)}</td>
           </tr>
         `).join('');
 
@@ -2108,20 +2291,20 @@
           <head>
             <style>
               @page { margin: 0; size: 80mm auto; }
-              body { font-family: Arial, sans-serif; font-size: 13px; padding: 10px; color: #000; width: 74mm; margin: 0 auto; line-height: 1.4; }
+              body { font-family: ${fontFamily}, Arial, sans-serif; font-size: ${fontPx}px; padding: 10px; color: #000; width: 74mm; margin: 0 auto; line-height: 1.4; }
               .center { text-align: center; }
               table { width: 100%; border-collapse: collapse; margin-top: 8px; }
               th, td { padding: 5px 0; border-bottom: 1px dashed #333; }
-              th { font-size: 12px; }
-              .total-box { margin-top: 10px; border-top: 2px solid #000; padding-top: 6px; font-size: 14px; }
+              th { font-size: ${fontPx}px; }
+              .total-box { margin-top: 10px; border-top: 2px solid #000; padding-top: 6px; font-size: ${fontPx+1}px; }
               .row { display: flex; justify-content: space-between; margin-bottom: 4px; }
               .fisc-info { font-size: 10px; text-align: center; margin-top: 10px; word-break: break-all; }
             </style>
           </head>
           <body>
             <div class="center">
-              <h2 style="margin:0; font-size:20px; font-weight:bold;">MARKET ISUFI</h2>
-              <p style="margin:4px 0; font-size:12px;">Fatura: <strong>${sale.receipt}</strong><br>Data: ${new Date(sale.date).toLocaleString('sq-AL')}</p>
+              <h2 style="margin:0; font-size:${fontPx+7}px; font-weight:bold;">MARKET ISUFI</h2>
+              <p style="margin:4px 0; font-size:${fontPx-1}px;">Fatura: <strong>${escapeHtml(sale.receipt)}</strong><br>Data: ${new Date(sale.date).toLocaleString('sq-AL')}</p>
             </div>
             <table>
               <thead>
@@ -2130,14 +2313,14 @@
               <tbody>${itemsRows}</tbody>
             </table>
             <div class="total-box">
-              <div class="row" style="font-weight:bold; font-size:16px;"><span>TOTALI:</span><span>${sale.total.toFixed(2)} ALL</span></div>
-              <div class="row" style="font-size:13px;"><span>Lekë të Dhëna:</span><span>${sale.paidAll || 0} ALL</span></div>
-              <div class="row" style="font-size:13px;"><span>Euro të Dhëna:</span><span>${sale.paidEur || 0} €</span></div>
-              <div class="row" style="font-weight:bold; margin-top:6px; font-size:15px; color:#16a34a;"><span>KUSURI:</span><span>${sale.changeDue !== undefined ? sale.changeDue.toFixed(2) : '0.00'} ${sale.changeCurrency || 'ALL'}</span></div>
+              <div class="row" style="font-weight:bold; font-size:${fontPx+1}px;"><span>TOTALI:</span><span>${sale.total.toFixed(2)} ALL</span></div>
+              <div class="row" style="font-size:${fontPx}px;"><span>Lekë të Dhëna:</span><span>${sale.paidAll || 0} ALL</span></div>
+              <div class="row" style="font-size:${fontPx}px;"><span>Euro të Dhëna:</span><span>${sale.paidEur || 0} €</span></div>
+              <div class="row" style="font-weight:bold; margin-top:6px; font-size:${fontPx+1}px; color:#16a34a;"><span>KUSURI:</span><span>${sale.changeDue !== undefined ? sale.changeDue.toFixed(2) : '0.00'} ${sale.changeCurrency || 'ALL'}</span></div>
             </div>
             <div class="fisc-info">
-              FIC: ${sale.fic || 'N/A'}<br>
-              NIVF: ${sale.nivf || 'N/A'}
+              FIC: ${escapeHtml(sale.fic || 'N/A')}<br>
+              NIVF: ${escapeHtml(sale.nivf || 'N/A')}
             </div>
             <script>
               window.onload = function() {
@@ -2150,15 +2333,20 @@
         win.document.close();
       };
 
-      return { checkDayStatus, renderProducts, search, addToCart, renderCart, updateQty, removeItem, updateTotals, logDiscountChange, checkout, openDebtModal, closeDebtModal, confirmDebtSale, printLastInvoice };
+      return { checkDayStatus, renderProducts, search, addToCart, renderCart, updateQty, removeItem, updateTotals, logDiscountChange, checkout, openDebtModal, closeDebtModal, confirmDebtSale, printLastInvoice, toggleShowAll, lastSale: () => lastSale };
     })();
+
+    // Escape HTML to prevent XSS in print previews
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
 
     // --- MODULI I HUMBJEVE DHE KONSUMIT TË STAFIT ---
     const WasteLog = (() => {
       const populateProductDropdown = () => {
         const select = document.getElementById('waste-prod-select');
         if (!select) return;
-        select.innerHTML = App.state.products.map(p => `<option value="${p.id}">${p.name} (Stok: ${p.stock})</option>`).join('');
+        select.innerHTML = App.state.products.map(p => `<option value="${p.id}">${escapeHtml(p.name)} (Stok: ${typeof p.stock === 'number' ? p.stock : 0})</option>`).join('');
       };
 
       const saveWaste = (e) => {
@@ -2169,9 +2357,11 @@
 
         const product = App.state.products.find(p => p.id === prodId);
         if (!product) return;
-        if (qty > product.stock) return App.showToast('Sasia e humbur/konsumuar tejkalon stokun!', 'danger');
+        if (typeof product.stock === 'number' && qty > product.stock) return App.showToast('Sasia e humbur/konsumuar tejkalon stokun!', 'danger');
 
-        product.stock -= qty;
+        if (typeof product.stock === 'number') {
+          product.stock -= qty;
+        }
         localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(App.state.products));
 
         const record = {
@@ -2197,18 +2387,20 @@
         if (!tbody) return;
         tbody.innerHTML = '';
 
+        const frag = document.createDocumentFragment();
         App.state.waste.forEach((w, idx) => {
           const row = document.createElement('tr');
           row.innerHTML = `
             <td>${new Date(w.date).toLocaleString('sq-AL')}</td>
-            <td><strong>${w.productName}</strong></td>
+            <td><strong>${escapeHtml(w.productName)}</strong></td>
             <td>${w.qty}</td>
-            <td><span class="status-pill" style="background:rgba(239,68,68,0.2); color:#fca5a5;">${w.reason}</span></td>
+            <td><span class="status-pill" style="background:rgba(239,68,68,0.2); color:#fca5a5;">${escapeHtml(w.reason)}</span></td>
             <td style="color:var(--danger); font-weight:bold;">${w.lossValue.toFixed(2)} ALL</td>
             <td><button class="small-btn delete" onclick="WasteLog.deleteWaste(${idx})">Fshi</button></td>
           `;
-          tbody.appendChild(row);
+          frag.appendChild(row);
         });
+        tbody.appendChild(frag);
       };
 
       const deleteWaste = (idx) => {
@@ -2232,13 +2424,14 @@
         tbody.innerHTML = '';
 
         const filteredDebts = App.state.debts.filter(d => 
-          d.klient_emri.toLowerCase().includes(query) || (d.klient_telefon || '').includes(query)
+          (d.klient_emri || '').toLowerCase().includes(query) || (d.klient_telefon || '').includes(query)
         );
 
         let activeDebtSum = 0;
         let activeClientsCount = 0;
         let paidDebtSum = 0;
 
+        const frag = document.createDocumentFragment();
         filteredDebts.forEach(d => {
           const mbetja = d.shuma_totale - d.shuma_e_paguar;
           if (d.statusi === 'AKTIV') {
@@ -2250,9 +2443,9 @@
 
           const row = document.createElement('tr');
           row.innerHTML = `
-            <td><strong>${d.klient_emri}</strong></td>
-            <td>${d.klient_telefon || '-'}</td>
-            <td><code>${d.shitje_id}</code></td>
+            <td><strong>${escapeHtml(d.klient_emri)}</strong></td>
+            <td>${escapeHtml(d.klient_telefon || '-')}</td>
+            <td><code>${escapeHtml(d.shitje_id)}</code></td>
             <td>${d.shuma_totale.toFixed(2)} ALL</td>
             <td style="color:var(--success); font-weight:bold;">${d.shuma_e_paguar.toFixed(2)} ALL</td>
             <td style="color:${mbetja > 0 ? 'var(--warning)' : 'var(--success)'}; font-weight:900;">${mbetja.toFixed(2)} ALL</td>
@@ -2263,8 +2456,10 @@
               ${d.statusi === 'AKTIV' ? `<button class="small-btn" style="background:var(--success);" onclick="Debts.payDebt('${d.id}')">💳 Paguaj</button>` : ''}
             </td>
           `;
-          tbody.appendChild(row);
+          frag.appendChild(row);
         });
+
+        tbody.appendChild(frag);
 
         const statsBox = document.getElementById('debt-stats');
         if (statsBox) {
@@ -2302,7 +2497,7 @@
 
         document.getElementById('debt-detail-title').textContent = `Borxhi: ${debt.klient_emri}`;
         document.getElementById('debt-detail-body').innerHTML = `
-          <strong>Klienti:</strong> ${debt.klient_emri}<br>
+          <strong>Klienti:</strong> ${escapeHtml(debt.klient_emri)}<br>
           <strong>Totali:</strong> ${debt.shuma_totale.toFixed(2)} ALL<br>
           <strong>Paguar:</strong> ${debt.shuma_e_paguar.toFixed(2)} ALL
         `;
@@ -2346,17 +2541,19 @@
         if (!tbody) return;
         tbody.innerHTML = '';
 
+        const frag = document.createDocumentFragment();
         App.state.expenses.forEach((ex, idx) => {
           const row = document.createElement('tr');
           row.innerHTML = `
             <td>${new Date(ex.date).toLocaleString('sq-AL')}</td>
-            <td><strong>${ex.desc}</strong></td>
-            <td>${ex.category}</td>
+            <td><strong>${escapeHtml(ex.desc)}</strong></td>
+            <td>${escapeHtml(ex.category)}</td>
             <td style="color:var(--danger); font-weight:bold;">${ex.amount.toFixed(2)} ALL</td>
             <td><button class="small-btn delete" onclick="Expenses.deleteExpense(${idx})">Fshi</button></td>
           `;
-          tbody.appendChild(row);
+          frag.appendChild(row);
         });
+        tbody.appendChild(frag);
       };
 
       const deleteExpense = (idx) => {
@@ -2378,6 +2575,9 @@
         if (!tbody) return;
         tbody.innerHTML = '';
 
+        // Use fragment for performance
+        const frag = document.createDocumentFragment();
+
         App.state.products.forEach((p, index) => {
           let expiryHtml = p.expiry || '<span style="color:var(--text-soft);">-</span>';
           if (p.expiry) {
@@ -2395,12 +2595,12 @@
           const row = document.createElement('tr');
           row.innerHTML = `
             <td><input type="checkbox" class="stock-item-cb" data-index="${index}" /></td>
-            <td><strong>${p.barcode}</strong></td>
-            <td>${p.name}</td>
+            <td><strong>${escapeHtml(p.barcode)}</strong></td>
+            <td>${escapeHtml(p.name)}</td>
             <td>${p.unit === 'kg' ? 'kg' : 'copë'}</td>
-            <td>${p.buyPrice.toFixed(2)} ALL</td>
-            <td><strong style="color:var(--primary);">${p.price.toFixed(2)} ALL</strong></td>
-            <td><strong style="color: ${p.stock <= 5 ? 'var(--danger)' : 'var(--success)'}">${p.stock}</strong></td>
+            <td>${(p.buyPrice || 0).toFixed(2)} ALL</td>
+            <td><strong style="color:var(--primary);">${(p.price || 0).toFixed(2)} ALL</strong></td>
+            <td><strong style="color: ${typeof p.stock === 'number' && p.stock <= 5 ? 'var(--danger)' : 'var(--success)'}">${typeof p.stock === 'number' ? p.stock : 0}</strong></td>
             <td>${expiryHtml}</td>
             <td>
               <button class="small-btn" style="background:var(--primary);" onclick="Stock.printSingleSticker(${index})">🖨️ Printo 1</button>
@@ -2408,8 +2608,10 @@
               <button class="small-btn delete" onclick="Stock.deleteProduct(${index})">Fshi</button>
             </td>
           `;
-          tbody.appendChild(row);
+          frag.appendChild(row);
         });
+
+        tbody.appendChild(frag);
       };
 
       const toggleSelectAll = (master) => {
@@ -2431,14 +2633,17 @@
       };
 
       const printStickers = (items) => {
+        const fontFamily = App.state.settings.font_family || 'Arial';
+        const fontPx = App.state.settings.print_font_px || 13;
+
         const win = window.open('', '_blank', 'width=600,height=800');
         let html = items.map((p, i) => `
-          <div style="width:60mm; height:35mm; border:1px solid #000; padding:4px; text-align:center; display:inline-block; margin:3px; page-break-inside:avoid; box-sizing:border-box;">
-            <div style="font-size:11px; font-weight:bold; overflow:hidden; white-space:nowrap;">${p.name}</div>
+          <div style="width:60mm; height:35mm; border:1px solid #000; padding:4px; text-align:center; display:inline-block; margin:3px; page-break-inside:avoid; box-sizing:border-box; font-family:${fontFamily}; font-size:${fontPx}px;">
+            <div style="font-size:${fontPx}px; font-weight:bold; overflow:hidden; white-space:nowrap;">${escapeHtml(p.name)}</div>
             <svg id="bc_${i}" style="width:90%; height:20px;"></svg>
-            <div style="font-size:8px; font-weight:bold;">${p.barcode}</div>
+            <div style="font-size:${Math.max(9, fontPx-2)}px; font-weight:bold;">${escapeHtml(p.barcode)}</div>
             <div style="margin-top:2px;">
-              <span style="font-size:14px; font-weight:900; color:#000;">${p.price.toFixed(2)} ALL</span>
+              <span style="font-size:${fontPx+1}px; font-weight:900; color:#000;">${(p.price || 0).toFixed(2)} ALL</span>
             </div>
           </div>
         `).join('');
@@ -2447,7 +2652,7 @@
           <html>
           <head>
             <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
-            <style>body { margin:0; padding:10px; font-family:sans-serif; }</style>
+            <style>body { margin:0; padding:10px; font-family:${App.state.settings.font_family || 'Arial'},sans-serif; }</style>
           </head>
           <body>
             ${html}
@@ -2474,8 +2679,7 @@
         const unit = document.getElementById('p-unit').value;
         const buyPrice = parseFloat(document.getElementById('p-buy-price').value) || 0;
         const price = parseFloat(document.getElementById('p-price').value) || 0;
-        const stock = parseFloat(document.getElementById('p-stock').value) || 0;
-        const expiry = document.getElementById('p-expiry').value;
+        const expiry = '';
 
         if (!barcode || !name) return App.showToast('Plotësoni të gjitha fushat kryesore!', 'danger');
 
@@ -2487,17 +2691,15 @@
             p.unit = unit;
             p.buyPrice = buyPrice;
             p.price = price;
-            p.stock = stock;
-            p.expiry = expiry;
             App.showToast(`Produkti "${name}" u përditësua!`, 'success');
           }
         } else {
           const exists = App.state.products.some(p => p.barcode === barcode);
           if (exists) return App.showToast('Ky barkod ekziston tashmë!', 'danger');
 
-          const newP = { id: 'p_' + Date.now(), barcode, name, unit, buyPrice, price, stock, expiry };
+          const newP = { id: 'p_' + Date.now(), barcode, name, unit, buyPrice, price, stock: 0, expiry: '' };
           App.state.products.push(newP);
-          App.showToast(`Produkti i ri "${name}" u shtua me sukses!`, 'success');
+          App.showToast(`Produkti i ri "${name}" u shtua me sukses! Stoku fillestar është 0 (ruaj njësitë në inventar më vonë).`, 'success');
         }
 
         localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(App.state.products));
@@ -2515,8 +2717,6 @@
         document.getElementById('p-unit').value = p.unit;
         document.getElementById('p-buy-price').value = p.buyPrice;
         document.getElementById('p-price').value = p.price;
-        document.getElementById('p-stock').value = p.stock;
-        document.getElementById('p-expiry').value = p.expiry || '';
 
         document.getElementById('stock-form-title').textContent = 'Përditëso Produktin';
         document.getElementById('p-save-btn').textContent = 'Ndrysho Produktin';
@@ -2547,38 +2747,139 @@
       const openImportModal = () => document.getElementById('import-modal').classList.remove('hidden');
       const closeImportModal = () => document.getElementById('import-modal').classList.add('hidden');
 
+      // Validate import lines and return structured result
+      function validateImportLines(lines) {
+        const existingBarcodes = new Set(App.state.products.map(p => p.barcode));
+        const fileBarcodes = {};
+        const validItems = [];
+        const errors = [];
+
+        lines.forEach((line, idx) => {
+          const cols = line.includes('\t') ? line.split('\t') : line.split(',');
+          const barcode = (cols[0] || '').trim();
+          const name = (cols[1] || '').trim();
+          const unit = ((cols[2] || 'cope').trim() || 'cope');
+          const buyPrice = parseFloat((cols[3] || '0').trim()) || 0;
+          const price = parseFloat((cols[4] || '0').trim()) || 0;
+          const stock = parseFloat((cols[5] || '0').trim()) || 0;
+          const expiry = (cols[6] || '').trim();
+
+          const rowNum = idx + 1;
+          if (!barcode || !name) {
+            errors.push({row: rowNum, reason: 'Barkod ose Emri mungon'});
+            return;
+          }
+          if (price <= 0) {
+            errors.push({row: rowNum, reason: 'Çmimi i Shitjes duhet > 0'});
+            return;
+          }
+          if (fileBarcodes[barcode]) {
+            errors.push({row: rowNum, reason: `Duplicate në skedarin import (barkod ${barcode})`});
+            return;
+          }
+          fileBarcodes[barcode] = true;
+
+          const existing = App.state.products.find(p => p.barcode === barcode);
+          validItems.push({
+            row: rowNum,
+            barcode, name, unit, buyPrice, price, stock, expiry,
+            action: existing ? 'update' : 'create'
+          });
+        });
+
+        // Check collisions with existing products
+        const createCount = validItems.filter(i => i.action === 'create').length;
+        const updateCount = validItems.filter(i => i.action === 'update').length;
+
+        return { validItems, errors, createCount, updateCount };
+      }
+
+      // Show preview modal for validation results
+      const showImportValidateModal = (validItems, errors, summary, rawLines) => {
+        const body = document.getElementById('import-validate-body');
+        body.innerHTML = '';
+
+        const frag = document.createDocumentFragment();
+
+        validItems.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="padding:8px; color:var(--success);">OK (${item.action})</td>
+            <td style="padding:8px;">${escapeHtml(item.barcode)}</td>
+            <td style="padding:8px;">${escapeHtml(item.name)}</td>
+            <td style="padding:8px;">${escapeHtml(item.unit)}</td>
+            <td style="padding:8px;">${item.buyPrice.toFixed(2)}</td>
+            <td style="padding:8px;">${item.price.toFixed(2)}</td>
+            <td style="padding:8px;">${item.stock}</td>
+          `;
+          frag.appendChild(tr);
+        });
+
+        errors.forEach(err => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="padding:8px; color:var(--danger);">GABIM</td>
+            <td style="padding:8px;" colspan="6">Rreshti ${err.row}: ${escapeHtml(err.reason)}</td>
+          `;
+          frag.appendChild(tr);
+        });
+
+        body.appendChild(frag);
+
+        document.getElementById('import-validate-summary').textContent = `Artikuj të vlefshëm: ${summary.createCount + summary.updateCount} (Shto: ${summary.createCount}, Përditëso: ${summary.updateCount}) - Gabime: ${summary.errors.length}`;
+        document.getElementById('import-validate-modal').classList.remove('hidden');
+
+        // attach confirm handler
+        const confirmBtn = document.getElementById('import-validate-confirm-btn');
+        confirmBtn.onclick = () => {
+          // perform actual import (apply validItems)
+          validItems.forEach(it => {
+            const existing = App.state.products.find(p => p.barcode === it.barcode);
+            if (existing) {
+              existing.name = it.name;
+              existing.unit = it.unit;
+              existing.buyPrice = it.buyPrice;
+              existing.price = it.price;
+              if (it.stock > 0) existing.stock = it.stock;
+              if (it.expiry) existing.expiry = it.expiry;
+            } else {
+              App.state.products.push({
+                id: 'p_' + Date.now() + Math.random().toString(36).slice(2,8),
+                barcode: it.barcode,
+                name: it.name,
+                unit: it.unit,
+                buyPrice: it.buyPrice,
+                price: it.price,
+                stock: it.stock,
+                expiry: it.expiry
+              });
+            }
+          });
+
+          localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(App.state.products));
+          renderTable();
+          POS.renderProducts();
+          closeImportValidateModal();
+          closeImportModal();
+          App.showToast(`Importi u krye: ${validItems.length} artikuj të përpunuar, ${errors.length} gabime.`, 'success');
+        };
+      };
+
+      const closeImportValidateModal = () => {
+        document.getElementById('import-validate-modal').classList.add('hidden');
+      };
+
       const processImportPaste = () => {
         const text = document.getElementById('import-paste-area').value.trim();
         if (!text) return App.showToast('Nuk keni ngjitur asnjë të dhënë!', 'danger');
         
-        const lines = text.split('\n');
-        let count = 0;
-        lines.forEach(line => {
-          const cols = line.split('\t');
-          if (cols.length >= 6) {
-            const [barcode, name, unit, buyPrice, price, stock, expiry] = cols;
-            const existing = App.state.products.find(p => p.barcode === barcode.trim());
-            if (!existing) {
-              App.state.products.push({
-                id: 'p_' + Date.now() + Math.random(),
-                barcode: barcode.trim(),
-                name: name.trim(),
-                unit: unit.trim() || 'cope',
-                buyPrice: parseFloat(buyPrice) || 0,
-                price: parseFloat(price) || 0,
-                stock: parseFloat(stock) || 0,
-                expiry: expiry ? expiry.trim() : ''
-              });
-              count++;
-            }
-          }
-        });
+        const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+        if (lines.length === 0) return App.showToast('Nuk u gjetën rreshta të vlefshëm!', 'danger');
 
-        localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(App.state.products));
-        renderTable();
-        POS.renderProducts();
-        closeImportModal();
-        App.showToast(`U importuan me sukses ${count} artikuj të rinj!`, 'success');
+        const { validItems, errors, createCount, updateCount } = validateImportLines(lines);
+
+        // show preview modal
+        showImportValidateModal(validItems, errors, { errors, createCount, updateCount }, lines);
       };
 
       const openBulkBarcodeModal = () => document.getElementById('bulk-barcode-modal').classList.remove('hidden');
@@ -2586,12 +2887,12 @@
 
       const printBulkStickers = () => {
         const mode = document.getElementById('bulk-print-target').value;
-        const productsToPrint = mode === 'critical' ? App.state.products.filter(p => p.stock <= 5) : App.state.products;
+        const productsToPrint = mode === 'critical' ? App.state.products.filter(p => typeof p.stock === 'number' && p.stock <= 5) : App.state.products;
         printStickers(productsToPrint);
         closeBulkBarcodeModal();
       };
 
-      return { renderTable, toggleSelectAll, printSingleSticker, printSelectedStickers, saveProduct, editProduct, deleteProduct, resetForm, openImportModal, closeImportModal, processImportPaste, openBulkBarcodeModal, closeBulkBarcodeModal, printBulkStickers };
+      return { renderTable, toggleSelectAll, printSingleSticker, printSelectedStickers, saveProduct, editProduct, deleteProduct, resetForm, openImportModal, closeImportModal, processImportPaste, openBulkBarcodeModal, closeBulkBarcodeModal, printBulkStickers, closeImportValidateModal };
     })();
 
     // --- FURNIZIMI ---
@@ -2604,6 +2905,8 @@
         const leadTime = parseInt(document.getElementById('ai-lead-time').value) || 3;
         const zScore = parseFloat(document.getElementById('ai-safety-z').value) || 1.65;
 
+        const frag = document.createDocumentFragment();
+
         App.state.products.forEach(p => {
           const { predictedDemand, safetyStock, reorderQty } = AIStockForecaster.calculateReorderQuantity(p, leadTime, zScore);
           
@@ -2615,23 +2918,24 @@
 
           let priorityClass = 'var(--text-soft)';
           let priorityText = 'E ulët';
-          if (p.stock <= 2) { priorityClass = 'var(--danger)'; priorityText = 'URGJENTE'; }
+          if (typeof p.stock === 'number' && p.stock <= 2) { priorityClass = 'var(--danger)'; priorityText = 'URGJENTE'; }
           else if (currentQty > 10) { priorityClass = 'var(--warning)'; priorityText = 'Mesatare'; }
 
           const row = document.createElement('tr');
           row.innerHTML = `
             <td><input type="checkbox" checked class="supply-checkbox" data-id="${p.id}" onchange="Supply.calculateTotalCost()" /></td>
             <td><strong style="color:${priorityClass}">${priorityText}</strong></td>
-            <td>${p.name}</td>
+            <td>${escapeHtml(p.name)}</td>
             <td>${predictedDemand} /ditë</td>
-            <td style="color:${p.stock <= 5 ? 'var(--danger)' : 'var(--text)'}">${p.stock}</td>
+            <td style="color:${typeof p.stock === 'number' && p.stock <= 5 ? 'var(--danger)' : 'var(--text)'}">${typeof p.stock === 'number' ? p.stock : 0}</td>
             <td><input type="number" class="qty-input" value="${currentQty}" min="0" onchange="Supply.updateQuantity('${p.id}', this.value)" /></td>
             <td>${(p.buyPrice || 0).toFixed(2)} ALL</td>
             <td><strong style="color:var(--primary);">${itemCost.toFixed(2)} ALL</strong></td>
           `;
-          tbody.appendChild(row);
+          frag.appendChild(row);
         });
 
+        tbody.appendChild(frag);
         calculateTotalCost();
       };
 
@@ -2685,18 +2989,21 @@
               if (qty > 0) {
                 const cost = qty * p.buyPrice;
                 totalOrderCost += cost;
-                selectedRowsHtml += `<tr><td>${p.name}</td><td>${qty}</td><td>${p.buyPrice.toFixed(2)} ALL</td><td>${cost.toFixed(2)} ALL</td></tr>`;
+                selectedRowsHtml += `<tr><td>${escapeHtml(p.name)}</td><td>${qty}</td><td>${p.buyPrice.toFixed(2)} ALL</td><td>${cost.toFixed(2)} ALL</td></tr>`;
               }
             }
           }
         });
+
+        const fontFamily = App.state.settings.font_family || 'Arial';
+        const fontPx = App.state.settings.print_font_px || 13;
 
         win.document.write(`
           <html>
           <head>
             <title>Fletë Porosie - Market Isufi</title>
             <style>
-              body { font-family: Arial, sans-serif; padding: 20px; color: #000; }
+              body { font-family: ${fontFamily}, Arial, sans-serif; padding: 20px; color: #000; font-size: ${fontPx}px; }
               table { width: 100%; border-collapse: collapse; margin-top: 15px; }
               th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
               th { background: #f2f2f2; }
@@ -2801,7 +3108,7 @@
             const diffDays = Math.ceil((expDate - now) / (1000 * 60 * 60 * 24));
 
             if (diffDays <= 7) {
-              totalLoss += p.stock * (p.buyPrice || 0);
+              totalLoss += (p.stock || 0) * (p.buyPrice || 0);
               countExpired++;
             }
           }
@@ -2939,18 +3246,20 @@
         const tbody = document.getElementById('sales-history-body');
         if (!tbody) return;
         tbody.innerHTML = '';
+        const frag = document.createDocumentFragment();
         list.forEach(s => {
           const row = document.createElement('tr');
           row.innerHTML = `
-            <td><strong>${s.receipt}</strong></td>
+            <td><strong>${escapeHtml(s.receipt)}</strong></td>
             <td>${new Date(s.date).toLocaleString('sq-AL')}</td>
             <td>${s.status_pagese || 'PAGUAR'}</td>
             <td>${(s.total || s.subtotal || 0).toFixed(2)}</td>
             <td>${(s.netProfit || 0).toFixed(2)}</td>
-            <td>${s.fic || ''} / ${s.nivf || ''}</td>
+            <td>${escapeHtml(s.fic || '')} / ${escapeHtml(s.nivf || '')}</td>
           `;
-          tbody.appendChild(row);
+          frag.appendChild(row);
         });
+        tbody.appendChild(frag);
       };
 
       const exportHistoryToExcel = () => {
@@ -2986,6 +3295,8 @@
         App.state.settings.eur_rate = v;
         if(document.getElementById('setting-printer-type')) App.state.settings.printer_type = document.getElementById('setting-printer-type').value;
         if(document.getElementById('setting-font-size')) App.state.settings.font_size = document.getElementById('setting-font-size').value;
+        if(document.getElementById('setting-font-family')) App.state.settings.font_family = document.getElementById('setting-font-family').value;
+        if(document.getElementById('setting-print-font-size')) App.state.settings.print_font_px = parseInt(document.getElementById('setting-print-font-size').value) || 13;
 
         localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(App.state.settings));
         document.getElementById('eur-rate-label').textContent = v;
@@ -2996,26 +3307,44 @@
     })();
 
     const Backup = (() => {
-      const exportJSON = () => {
-        const data = {
-          products: App.state.products,
-          sales: App.state.sales,
-          debts: App.state.debts,
-          expenses: App.state.expenses,
-          waste: App.state.waste,
-          closures: App.state.closures,
-          settings: App.state.settings,
-          auditLogs: App.state.auditLogs
-        };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `isufi_backup_${new Date().toISOString().slice(0,10)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        App.showToast('Skedari u shkarkua.', 'success');
+      // Export: optional passphrase to encrypt content + always include checksum of plain JSON
+      const exportJSON = async () => {
+        try {
+          const pass = prompt('Nëse dëshironi ta enkriptoni skedarin, vendosni passphrase këtu (lër bosh për pa enkriptim):');
+          const data = {
+            products: App.state.products,
+            sales: App.state.sales,
+            debts: App.state.debts,
+            expenses: App.state.expenses,
+            waste: App.state.waste,
+            closures: App.state.closures,
+            settings: App.state.settings,
+            auditLogs: App.state.auditLogs
+          };
+          const jsonStr = JSON.stringify(data, null, 2);
+          const checksum = await sha256Hex(jsonStr);
+
+          let payloadObj;
+          if (pass) {
+            const enc = await encryptJSONWithPassphrase(jsonStr, pass);
+            payloadObj = { encrypted: true, payload: enc.ciphertext, iv: enc.iv, salt: enc.salt, checksum };
+          } else {
+            payloadObj = { encrypted: false, payload: toBase64(new TextEncoder().encode(jsonStr)), checksum };
+          }
+
+          const blob = new Blob([JSON.stringify(payloadObj, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `isufi_backup_${new Date().toISOString().slice(0,10)}.json`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          App.showToast('Skedari u shkarkua.', 'success');
+        } catch (e) {
+          console.error(e);
+          App.showToast('Eksporti dështoi.', 'danger');
+        }
       };
 
       const importJSON = async () => {
@@ -3025,32 +3354,61 @@
         try {
           const text = await file.text();
           const parsed = JSON.parse(text);
-          if (parsed.products) App.state.products = parsed.products;
-          if (parsed.sales) App.state.sales = parsed.sales;
-          if (parsed.debts) App.state.debts = parsed.debts;
-          if (parsed.expenses) App.state.expenses = parsed.expenses;
-          if (parsed.waste) App.state.waste = parsed.waste;
-          if (parsed.closures) App.state.closures = parsed.closures;
-          if (parsed.settings) App.state.settings = parsed.settings;
-          if (parsed.auditLogs) App.state.auditLogs = parsed.auditLogs;
 
-          localStorage.setItem(STORAGE_KEYS.products, JSON.stringify(App.state.products));
-          localStorage.setItem(STORAGE_KEYS.sales, JSON.stringify(App.state.sales));
-          localStorage.setItem(STORAGE_KEYS.debts, JSON.stringify(App.state.debts));
-          localStorage.setItem(STORAGE_KEYS.expenses, JSON.stringify(App.state.expenses));
-          localStorage.setItem(STORAGE_KEYS.waste, JSON.stringify(App.state.waste));
-          localStorage.setItem(STORAGE_KEYS.daily_closures, JSON.stringify(App.state.closures));
-          localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(App.state.settings));
-          localStorage.setItem(STORAGE_KEYS.audit_logs, JSON.stringify(App.state.auditLogs));
+          let jsonStr = null;
+          if (parsed.encrypted) {
+            const pass = prompt('Skedari është i enkriptuar. Vendosni passphrase:');
+            if (!pass) return App.showToast('Passphrase kërkohet për të dekriptuar skedarin.', 'danger');
+            try {
+              jsonStr = await decryptJSONWithPassphrase(parsed.payload, parsed.iv, parsed.salt, pass);
+            } catch (e) {
+              console.error(e);
+              return App.showToast('Passphrase i gabuar ose dekriptimi dështoi.', 'danger');
+            }
+          } else {
+            // payload is base64 of json
+            const buf = fromBase64(parsed.payload);
+            jsonStr = new TextDecoder().decode(buf);
+          }
 
-          POS.renderProducts();
-          Stock.renderTable();
-          Debts.render();
-          Expenses.renderTable();
-          WasteLog.renderTable();
-          Audit.renderTable();
-          App.showToast('Të dhënat u rikthyen me sukses!', 'success');
+          // verify checksum
+          const actualChecksum = await sha256Hex(jsonStr);
+          if (actualChecksum !== parsed.checksum) {
+            return App.showToast('Checksum nuk përputhet. Skedari mund të jetë i korruptuar!', 'danger');
+          }
+
+          const imported = JSON.parse(jsonStr);
+          // Validate products before overwrite: create a preview and require user confirmation
+          const productsLines = (imported.products || []).map(p => `${p.barcode}\t${p.name}\t${p.unit || ''}\t${p.buyPrice || 0}\t${p.price || 0}\t${p.stock || 0}\t${p.expiry || ''}`);
+          const { validItems, errors, createCount, updateCount } = (function(lines){
+            // reuse simple validator used in Stock
+            const fileBar = {};
+            const valid = [];
+            const err = [];
+            lines.forEach((line, idx) => {
+              const cols = line.split('\t');
+              const barcode = (cols[0] || '').trim();
+              const name = (cols[1] || '').trim();
+              const unit = (cols[2] || 'cope').trim() || 'cope';
+              const buyPrice = parseFloat((cols[3] || '0').trim()) || 0;
+              const price = parseFloat((cols[4] || '0').trim()) || 0;
+              const stock = parseFloat((cols[5] || '0').trim()) || 0;
+              const expiry = (cols[6] || '').trim();
+              const rowNum = idx + 1;
+              if (!barcode || !name) { err.push({row:rowNum, reason:'Barkod/Emër mungon'}); return; }
+              if (fileBar[barcode]) { err.push({row:rowNum, reason:'Duplicate në skedarin import'}); return; }
+              fileBar[barcode] = true;
+              const exists = App.state.products.find(p => p.barcode === barcode);
+              valid.push({barcode,name,unit,buyPrice,price,stock,expiry,action: exists?'update':'create'});
+            });
+            return { validItems: valid, errors: err, createCount: valid.filter(v=>v.action==='create').length, updateCount: valid.filter(v=>v.action==='update').length };
+          })(productsLines);
+
+          // show preview modal (reuse Stock.showImportValidateModal)
+          Stock.showImportValidateModal(validItems, errors, { errors, createCount, updateCount }, productsLines);
+
         } catch (e) {
+          console.error(e);
           App.showToast('Skedari invalid ose format gabim.', 'danger');
         }
       };
@@ -3072,4 +3430,3 @@
   </script>
 </body>
 </html>
-
